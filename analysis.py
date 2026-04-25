@@ -230,11 +230,12 @@ def main() -> None:
     conn.register("assumptions_t", pa.Table.from_pylist(assumptions))
     job.write_parquet("assumptions", "SELECT * FROM assumptions_t")
 
-    # ── dcf breakdown ──
+    # ── dcf breakdown — `year` is always a STRING so the projection
+    # rows ("1".."5") and the terminal row ("Terminal") share a column type.
     breakdown = []
     for y, (fcf, pv) in enumerate(zip(projected, pv_projected), start=1):
         breakdown.append({
-            "year": y,
+            "year": str(y),
             "projected_fcf_b": fcf / 1e9,
             "discount_factor": round(1.0 / ((1 + wacc) ** y), 4),
             "present_value_b": pv / 1e9,
