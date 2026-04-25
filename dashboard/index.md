@@ -69,8 +69,8 @@ Every value the model used and produced. Read top-to-bottom: inputs first,
 intermediate calculations next, intrinsic value and verdict at the bottom.
 
 {% data_table data="$assumptions" rows=20 rowShading=true %}
-{% column id="key"   title="Item" /%}
-{% column id="value" title="Value" /%}
+{% column id="key"   title="Item"  contentType="text" /%}
+{% column id="value" title="Value" contentType="text" /%}
 {% /data_table %}
 
 ## Projected vs Discounted FCF
@@ -82,7 +82,7 @@ column shows how much each future dollar is worth today at the chosen WACC.
 {% column id="year"             title="Year"                  /%}
 {% column id="projected_fcf_b"  title="Projected FCF ($B)"   fmt="num2" /%}
 {% column id="discount_factor"  title="Discount Factor"      fmt="num4" /%}
-{% column id="present_value_b"  title="Present Value ($B)"   contentType="colorscale" scaleColor=["#fef3c7","#22c55e"] fmt="num2" /%}
+{% column id="present_value_b"  title="Present Value ($B)"   contentType="colorscale" scaleColor=["#fecaca","#22c55e"] fmt="num2" /%}
 {% /data_table %}
 
 {% bar_chart data="$breakdown" x="year" y=["present_value_b"]
