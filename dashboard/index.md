@@ -98,18 +98,11 @@ value per share. Verdict + 6 takeaways below the model.
 
 *The flatter this line, the more robust the valuation. A steeply rising line means the model is hyper-sensitive to growth assumptions and you should treat the headline verdict skeptically.*
 
-{% heatmap data="$sensitivity" x="g_pct" y="wacc_pct" value="intrinsic_per_share"
-            title="Intrinsic value per share — WACC × terminal growth"
-            colors=["#fee2e2","#fca5a5","#f87171","#fbbf24","#86efac","#22c55e","#15803d"]
-            chartAreaHeight=360 /%}
-
-*Each cell is the intrinsic value per share at that (WACC, g) pair. Red = lower than the headline KPI, green = higher. Find the cell closest to your own conviction and treat it as the honest single number.*
-
 {% data_table data="$sensitivity" rows=25 rowShading=true
-              info="The same 5×5 grid as a sortable table — WACC ±2%, terminal g ±1% around the user's chosen values. Use the heatmap above for the visual story; use this table to read the exact dollar values." %}
+              info="The 5×5 stress-test grid: WACC ±2%, terminal g ±1% around the user's chosen values. Greener = higher intrinsic value. Find the (WACC, g) cell closest to your own conviction — that's a more honest single number than the hero KPI." %}
 {% column id="wacc_pct"             title="WACC (%)"                fmt="num2" /%}
 {% column id="g_pct"                title="Terminal g (%)"          fmt="num2" /%}
-{% column id="intrinsic_per_share"  title="Intrinsic / share ($)"   fmt="num2" /%}
+{% column id="intrinsic_per_share"  title="Intrinsic / share ($)"   contentType="colorscale" palette="greens" fmt="num2" /%}
 {% /data_table %}
 
 *The 5×5 grid of intrinsic-value outcomes (WACC ±2%, g ±1%). Greener = higher intrinsic value. Find your conviction-weighted assumption pair and read the cell — that's a more honest single number than the hero KPI.*
