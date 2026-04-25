@@ -205,26 +205,38 @@ def main() -> None:
     job.write_parquet("summary", "SELECT * FROM summary_t")
 
     # ── assumptions table ──
+    # Every value carries its unit INLINE — the renderer auto-right-aligns
+    # any pure-numeric string and left-aligns the rest, which produces an
+    # ugly mixed-alignment column. Embedding "$" / "%" / "B" / "years" in
+    # every value forces uniform left alignment AND improves readability.
+    def fmt_money(x_in_b: float) -> str:
+        sign = "−" if x_in_b < 0 else ""
+        return f"{sign}${abs(x_in_b):,.2f} B"
+    def fmt_pct(p_decimal: float, sign: bool = False, clamped: bool = False) -> str:
+        s = f"{p_decimal * 100:+,.1f}%" if sign else f"{p_decimal * 100:,.2f}%"
+        return s + (" (clamped)" if clamped else "")
+    growth_was_clamped = abs(historical_growth - growth_for_projection) > 0.001
+
     assumptions = [
         {"key": "Ticker",                      "value": ticker},
         {"key": "Company",                     "value": company_name},
         {"key": "Sector / Industry",           "value": f"{sector} / {industry}"},
-        {"key": "Current price ($)",           "value": f"{current_price:,.2f}"},
-        {"key": "Shares outstanding (B)",      "value": f"{shares_out / 1e9:,.3f}"},
-        {"key": "Market cap ($B)",             "value": f"{market_cap / 1e9:,.2f}"},
-        {"key": "Net cash / (debt) ($B)",      "value": f"{net_cash / 1e9:,.2f}"},
-        {"key": "Latest FCF ($B)",             "value": f"{latest_fcf / 1e9:,.2f}"},
-        {"key": "Historical FCF CAGR",         "value": f"{historical_growth * 100:,.1f}%"},
-        {"key": "Growth used for projection",  "value": f"{growth_for_projection * 100:,.1f}% (clamped)"},
-        {"key": "WACC (discount rate)",        "value": f"{wacc * 100:,.2f}%"},
-        {"key": "Terminal growth rate",        "value": f"{terminal_g * 100:,.2f}%"},
+        {"key": "Current price",               "value": f"${current_price:,.2f}"},
+        {"key": "Shares outstanding",          "value": f"{shares_out / 1e9:,.3f} B"},
+        {"key": "Market cap",                  "value": fmt_money(market_cap / 1e9)},
+        {"key": "Net cash / (debt)",           "value": fmt_money(net_cash / 1e9)},
+        {"key": "Latest FCF",                  "value": fmt_money(latest_fcf / 1e9)},
+        {"key": "Historical FCF CAGR",         "value": fmt_pct(historical_growth, sign=True)},
+        {"key": "Growth used for projection",  "value": fmt_pct(growth_for_projection, sign=True, clamped=growth_was_clamped)},
+        {"key": "WACC (discount rate)",        "value": fmt_pct(wacc)},
+        {"key": "Terminal growth rate",        "value": fmt_pct(terminal_g)},
         {"key": "Projection horizon",          "value": f"{projection_years} years"},
-        {"key": "PV of projected FCF ($B)",    "value": f"{sum(pv_projected) / 1e9:,.2f}"},
-        {"key": "PV of terminal value ($B)",   "value": f"{pv_tv / 1e9:,.2f}"},
-        {"key": "Enterprise value ($B)",       "value": f"{enterprise_value / 1e9:,.2f}"},
-        {"key": "Equity value ($B)",           "value": f"{equity_value / 1e9:,.2f}"},
+        {"key": "PV of projected FCF",         "value": fmt_money(sum(pv_projected) / 1e9)},
+        {"key": "PV of terminal value",        "value": fmt_money(pv_tv / 1e9)},
+        {"key": "Enterprise value",            "value": fmt_money(enterprise_value / 1e9)},
+        {"key": "Equity value",                "value": fmt_money(equity_value / 1e9)},
         {"key": "Intrinsic value per share",   "value": f"${intrinsic_per_share:,.2f}"},
-        {"key": "Margin of safety",            "value": f"{margin_of_safety:+,.1f}%"},
+        {"key": "Margin of safety",            "value": fmt_pct(margin_of_safety / 100, sign=True)},
         {"key": "Verdict",                     "value": verdict},
     ]
     conn.register("assumptions_t", pa.Table.from_pylist(assumptions))
