@@ -45,22 +45,22 @@ value per share. Verdict + 6 takeaways below the model.
 ## Hero
 
 {% big_value data="$summary" value="current_price"        title="Current Price"        fmt="num2" prefix="$"
-              info="What the market is paying per share right now (latest close from Yahoo Finance)." /%}
+              info="WHAT: The price one share of this stock is trading at right now (latest close from Yahoo Finance). HOW: Think of it as a price tag at a store — it's what you pay if you click Buy today. WHY IT MATTERS: This is the number you compare every other valuation against. Every metric on this page is asking: 'is this price fair, cheap, or expensive?'" /%}
 {% big_value data="$summary" value="intrinsic_per_share"  title="Intrinsic Value"      fmt="num2" prefix="$"
-              info="What the DCF model says one share is *worth* — the present value of all expected future cash flows, divided by shares outstanding." /%}
+              info="WHAT: What ONE SHARE is worth based on the cash the company will produce in the future (not what the market thinks today). HOW: The DCF model adds up every dollar of free cash flow the company is expected to make over the next 5 years + a 'terminal value' for everything beyond that, discounts each future dollar back to today's value (because $1 next year < $1 today), then divides by shares outstanding. WHY IT MATTERS: This is the model's answer to 'what should this stock be worth?'. Compare against Current Price — if intrinsic > current, the market may be undervaluing the company." /%}
 {% big_value data="$summary" value="upside_pct"           title="Margin of Safety"     fmt="num1" suffix="%"
-              info="(Intrinsic ÷ Current) − 1. Positive = stock looks cheap vs. the model. Negative = expensive. >20% margin is usually considered a buy signal by value investors." /%}
+              info="WHAT: How much higher (or lower) the model's intrinsic value is vs. the current market price, as a percent. HOW: (Intrinsic ÷ Current) − 1. Example: intrinsic $120, current $100 → +20% margin of safety. WHY IT MATTERS: A positive number means the stock looks cheap to the model — buying it gives you a 'cushion' if your DCF assumptions are slightly wrong. Value investors typically want at least +20% before buying (Benjamin Graham's rule). Negative = the market is paying more than the model thinks the stock is worth." /%}
 {% big_value data="$summary" value="verdict"              title="Verdict"
-              info="UNDERVALUED if margin of safety > +20%. OVERVALUED if < −20%. Otherwise FAIR VALUE. These thresholds are rules of thumb — sanity-check against the sensitivity matrix below." /%}
+              info="WHAT: A one-word summary of the model's opinion. HOW: UNDERVALUED if margin of safety > +20% (model says it's a bargain). OVERVALUED if margin of safety < −20% (model says it's expensive). FAIR VALUE in between (close to what the model expects). WHY IT MATTERS: A quick sanity check before you dig in. But — this is a rule of thumb. ALWAYS cross-reference with the Sensitivity matrix below: if small WACC/growth tweaks flip the verdict, the conclusion is fragile and you shouldn't trust the headline." /%}
 {% big_value data="$summary" value="market_cap_b"         title="Market Cap"           fmt="num2" suffix=" B" prefix="$"
-              info="Total market value of the company = current price × shares outstanding. Useful for context (large-cap >$10B, mid $2–10B, small $0.3–2B)." /%}
+              info="WHAT: The total dollar value of the entire company (all shares × current price). HOW: shares outstanding × current price. Example: 15 B shares × $100/share = $1.5 trillion market cap. WHY IT MATTERS: Tells you how big the company is and which playbook to apply. Common buckets: Mega-cap >$200B (Apple, Microsoft) — slow but stable. Large-cap $10–200B — established. Mid-cap $2–10B — growing. Small-cap $300M–2B — risky but room to grow. Micro-cap <$300M — speculative." /%}
 
 *Read these top to bottom: Current price is what you pay; Intrinsic Value is what the model thinks it's worth; Margin of Safety is the gap between them; Verdict summarizes; Market Cap puts it in context.*
 
 ## DCF Inputs & Outputs
 
 {% data_table data="$assumptions" rows=20 rowShading=true
-              info="Every input the DCF used (top half) and every number it produced (bottom half). Read top to bottom: company facts → user assumptions (WACC, terminal growth) → math outputs (PV of cash flows, enterprise value, intrinsic per share, verdict). If the verdict surprises you, scroll up to find which assumption is driving it." %}
+              info="WHAT: A complete list of every number the DCF model used as input AND every number it computed as output, in one table. HOW TO READ IT: Top half = facts about the company (ticker, market cap, latest free cash flow) + assumptions YOU chose (WACC, terminal growth, projection horizon). Bottom half = what the math produced (PV of projected cash flows, terminal value, enterprise value, equity value, intrinsic per share, verdict). WHY IT MATTERS: This is the audit trail. If the headline Verdict surprises you, find which row is doing the heavy lifting — usually it's WACC, terminal growth, or the historical FCF CAGR. Change one assumption and the bottom half changes." %}
 {% column id="key"   title="Item"  contentType="text" /%}
 {% column id="value" title="Value" contentType="text" /%}
 {% /data_table %}
@@ -70,7 +70,7 @@ value per share. Verdict + 6 takeaways below the model.
 ## Projected vs Discounted FCF
 
 {% data_table data="$breakdown" rows=12 rowShading=true
-              info="Year-by-year projected free cash flow and its present value (discounted at WACC). The Terminal row at the bottom captures all cash flows beyond the explicit horizon as a single Gordon-Growth lump sum. Greener cell = bigger contribution to total enterprise value." %}
+              info="WHAT: The year-by-year math behind the DCF. HOW TO READ EACH COLUMN: 'Projected FCF ($B)' = how much free cash the model thinks the company will produce that year (latest FCF grown by historical CAGR). 'Discount Factor' = 1 / (1 + WACC)^year — how much less a future dollar is worth in today's terms (year 1 = ~0.91, year 5 = ~0.62 at 10% WACC). 'Present Value ($B)' = projected FCF × discount factor. The 'Terminal' row at the bottom captures EVERY cash flow beyond year 5 in a single Gordon-Growth lump sum. WHY IT MATTERS: Sum the Present Value column = enterprise value. If the Terminal row dominates the sum, your valuation is mostly a bet on the long-run steady state — fragile to terminal growth assumptions." %}
 {% column id="year"             title="Year"                  /%}
 {% column id="projected_fcf_b"  title="Projected FCF ($B)"   fmt="num2" /%}
 {% column id="discount_factor"  title="Discount Factor"      fmt="num4" /%}
@@ -83,7 +83,7 @@ value per share. Verdict + 6 takeaways below the model.
               title="Contribution to Enterprise Value (PV by year)"
               yAxisTitle="Present Value ($B)"
               colors=["#3b82f6"]
-              info="How much each year (and the terminal lump-sum) contributes to total enterprise value, in today's dollars. If the Terminal bar dwarfs every projection year, the valuation is heavily dependent on what happens after year 5 — risky." /%}
+              info="WHAT: A visual of the same Present Value column from the table above — each bar is one year's contribution to enterprise value, in today's dollars. HOW TO READ IT: Bar height = how much that year (or the Terminal lump-sum) is worth right now. The Terminal bar lumps together everything beyond year 5. WHY IT MATTERS: This is the single most important chart for spotting fragility. If the Terminal bar dwarfs every projection year (very common), the valuation is mostly a bet on what happens AFTER the 5-year horizon. Tiny changes in terminal growth → huge swings in intrinsic value. If projection years and Terminal are roughly comparable, the valuation is more anchored to the explicit forecast and is more robust." /%}
 
 *If the rightmost (Terminal) bar dominates everything else, the model is largely betting on the company's long-run steady-state — small changes to the terminal growth rate will swing the verdict.*
 
@@ -94,7 +94,7 @@ value per share. Verdict + 6 takeaways below the model.
               yAxisTitle="Intrinsic value per share ($)"
               xAxisTitle="Terminal growth rate (%)"
               colors=["#7c3aed"]
-              info="How intrinsic value moves when you flex the two most-fragile assumptions: WACC (discount rate) and terminal growth. Use this to stress-test the verdict — if a small change in either knob flips the verdict, the conclusion is fragile." /%}
+              info="WHAT: A 'what-if' chart. Each line shows what intrinsic value PER SHARE would be if WACC were different (the colored lines), as you slide terminal growth from -1% to +1% around your chosen value (the x-axis). HOW TO READ IT: A FLAT line = the model is robust (changing growth doesn't move the answer much). A STEEP line = the model is fragile (small assumption changes swing intrinsic value a lot). WHY IT MATTERS: WACC and terminal growth are the two assumptions DCF authors fight about most. If your verdict survives across the whole grid, you can have confidence in it. If a 0.5% change in either flips UNDERVALUED → OVERVALUED, the headline KPI is essentially a coin flip and you should not act on it." /%}
 
 *The flatter this line, the more robust the valuation. A steeply rising line means the model is hyper-sensitive to growth assumptions and you should treat the headline verdict skeptically.*
 
