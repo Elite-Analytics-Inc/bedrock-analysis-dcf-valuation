@@ -1,0 +1,31 @@
+{
+  "analysis_name": "dcf-valuation",
+  "namespace": "bedrock",
+  "inputs": ["bedrock.finance.stock_prices"],
+  "params_schema": {
+    "ticker": {
+      "type": "string",
+      "default": "AAPL",
+      "description": "Stock ticker symbol (e.g. AAPL, MSFT, NVDA, GOOGL, TSLA)"
+    },
+    "wacc": {
+      "type": "number",
+      "default": 0.10,
+      "description": "Weighted Average Cost of Capital — annual discount rate (e.g. 0.09 = 9%)"
+    },
+    "terminal_growth": {
+      "type": "number",
+      "default": 0.03,
+      "description": "Long-run terminal growth rate (e.g. 0.025 = 2.5%). Must be < WACC."
+    },
+    "projection_years": {
+      "type": "integer",
+      "default": 5,
+      "description": "Years of explicit FCF projection before terminal value (5–10 typical)"
+    }
+  },
+  "resources": {
+    "requests": {"cpu": "1", "memory": "2Gi"},
+    "limits":   {"cpu": "1", "memory": "2Gi"}
+  }
+}
