@@ -102,7 +102,7 @@ value per share. Verdict + 6 takeaways below the model.
               info="The 5×5 stress-test grid: WACC ±2%, terminal g ±1% around the user's chosen values. Greener = higher intrinsic value. Find the (WACC, g) cell closest to your own conviction and use that number — it is more honest than the single hero KPI which assumes one fixed pair." %}
 {% column id="wacc_pct"             title="WACC (%)"                fmt="num2" /%}
 {% column id="g_pct"                title="Terminal g (%)"          fmt="num2" /%}
-{% column id="intrinsic_per_share"  title="Intrinsic / share ($)"   contentType="colorscale" scaleColor=["#10b981","#065f46"] fmt="num2" /%}
+{% column id="intrinsic_per_share"  title="Intrinsic / share ($)"   contentType="colorscale" scaleColor=["#047857","#064e3b"] fmt="num2" /%}
 {% /data_table %}
 
 *The 5×5 grid of intrinsic-value outcomes (WACC ±2%, g ±1%). Greener = higher intrinsic value. Find your conviction-weighted assumption pair and read the cell — that's a more honest single number than the hero KPI.*
