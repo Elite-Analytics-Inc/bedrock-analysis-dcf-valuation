@@ -2,7 +2,6 @@ import json
 import os
 import sys
 import tempfile
-import time
 from datetime import datetime, timezone
 
 
@@ -73,15 +72,27 @@ class BedrockJob:
 
     def fetch(self, table_name: str, sql: str):
         """
-        Query Iceberg data through the query engine (ABAC enforced).
+        Query Iceberg data through the in-pod sidecar query engine via Arrow
+        Flight (gRPC, port 7778). ABAC enforced upstream.
 
-        Uses Arrow Flight (gRPC, port 7778) for high-throughput binary transfer.
-        Falls back to HTTP JSON (/query, port 7777) when Flight is unavailable.
-        Registers the result as a local DuckDB table named `table_name`.
+        Flight is the ONLY transport — there is no HTTP fallback. The sidecar
+        is in the same pod as this container; if Flight is unavailable, the
+        analysis fails fast rather than silently routing to the shared cluster
+        QE via HTTP (which would buffer the entire result set in Vec and OOM
+        the cluster for any large query). See onboard/docs/fundamentals/
+        live-updates-and-streaming.md for why the sidecar boundary matters.
+
+        The result lands as a local DuckDB table named `table_name`. To keep
+        the analysis container memory bounded, push aggregations into `sql`
+        (GROUP BY / WHERE / HAVING) — don't pull raw rows for local rollup.
 
         Example:
-            job.fetch("trips", "SELECT * FROM catalog.transportation.nyc_taxi_trips WHERE year = 2022")
-            result = conn.execute("SELECT COUNT(*) FROM trips").fetchone()
+            job.fetch("hourly", '''
+                SELECT EXTRACT(hour FROM ts) AS h, COUNT(*) AS n, AVG(amount) AS avg
+                FROM bedrock.transportation.nyc_taxi_trips
+                WHERE EXTRACT(year FROM ts) = 2023
+                GROUP BY h ORDER BY h
+            ''')  # → 24 rows
         """
         import time
 
@@ -90,88 +101,40 @@ class BedrockJob:
                      "message": f"[query:{table_name}] {sql_preview}{'…' if len(sql.strip()) > 120 else ''}"})
         t0 = time.time()
 
-        # Try Arrow Flight first (gRPC, no row limit, binary transfer)
         arrow_table = self._fetch_flight(sql)
-
-        if arrow_table is not None:
-            conn = self._local_conn()
-            if arrow_table.num_rows == 0:
-                col_defs = ", ".join(
-                    f'"{f.name}" VARCHAR' for f in arrow_table.schema
-                )
-                conn.execute(f'CREATE OR REPLACE TABLE "{table_name}" ({col_defs})')
-            else:
-                conn.execute(
-                    f'CREATE OR REPLACE TABLE "{table_name}" AS SELECT * FROM arrow_table'
-                )
-            elapsed = time.time() - t0
-            self._emit({"type": "log", "level": "info",
-                         "message": f"[query:{table_name}] Completed in {elapsed:.1f}s — {arrow_table.num_rows:,} rows (flight)"})
-            return
-
-        # Fallback: HTTP JSON (has 1000-row safety limit on shared replicas)
-        self._fetch_http(table_name, sql, t0)
+        conn = self._local_conn()
+        if arrow_table.num_rows == 0:
+            col_defs = ", ".join(f'"{f.name}" VARCHAR' for f in arrow_table.schema)
+            conn.execute(f'CREATE OR REPLACE TABLE "{table_name}" ({col_defs})')
+        else:
+            conn.execute(
+                f'CREATE OR REPLACE TABLE "{table_name}" AS SELECT * FROM arrow_table'
+            )
+        elapsed = time.time() - t0
+        self._emit({"type": "log", "level": "info",
+                     "message": f"[query:{table_name}] Completed in {elapsed:.1f}s — {arrow_table.num_rows:,} rows"})
 
     def _fetch_flight(self, sql: str):
-        """Execute SQL via Arrow Flight (gRPC). Returns pyarrow.Table or None."""
-        try:
-            import pyarrow.flight as flight
+        """Execute SQL against the sidecar via Arrow Flight (gRPC). Returns a
+        pyarrow.Table. Raises FlightError (or pyarrow's underlying
+        FlightUnavailableError / FlightServerError) on any failure — the
+        caller does NOT swallow exceptions. We never fall back to HTTP because
+        every analysis must stay inside the sidecar boundary."""
+        import pyarrow.flight as flight
 
-            # Flight endpoint is one port above HTTP (7777 → 7778)
-            grpc_host = self.qe_url.replace("http://", "").replace("https://", "")
-            host, port = grpc_host.rsplit(":", 1)
-            flight_port = int(port) + 1
+        # Sidecar Flight endpoint is one port above the HTTP port (7777 → 7778).
+        grpc_host = self.qe_url.replace("http://", "").replace("https://", "")
+        host, port = grpc_host.rsplit(":", 1)
+        flight_port = int(port) + 1
 
-            client = flight.FlightClient(f"grpc://{host}:{flight_port}")
+        client = flight.FlightClient(f"grpc://{host}:{flight_port}")
 
-            # Send SQL as the ticket; auth token in headers
-            headers = [(b"authorization", f"Bearer {self.job_token}".encode())]
-            options = flight.FlightCallOptions(headers=headers)
+        headers = [(b"authorization", f"Bearer {self.job_token}".encode())]
+        options = flight.FlightCallOptions(headers=headers)
 
-            # FlightInfo describes the result; do_get streams the data
-            ticket = flight.Ticket(json.dumps({"sql": sql}).encode("utf-8"))
-            reader = client.do_get(ticket, options)
-            table = reader.read_all()
-            return table
-        except Exception as e:
-            # Flight unavailable — fall back to HTTP
-            print(f"[fetch] Flight unavailable ({e}), falling back to HTTP", flush=True)
-            return None
-
-    def _fetch_http(self, table_name: str, sql: str, t0: float):
-        """Fallback: fetch via HTTP JSON /query endpoint."""
-        import urllib.request
-
-        payload = json.dumps({"sql": sql}).encode()
-        req = urllib.request.Request(
-            f"{self.qe_url}/query",
-            data=payload,
-            method="POST",
-            headers=self._http_headers(),
-        )
-        with urllib.request.urlopen(req, timeout=86400) as resp:
-            data = json.load(resp)
-
-        elapsed = time.time() - t0
-        row_count = len(data.get("rows", []))
-        self._emit({"type": "log", "level": "info",
-                     "message": f"[query:{table_name}] Completed in {elapsed:.1f}s — {row_count:,} rows (http)"})
-
-        conn = self._local_conn()
-        columns = data.get("columns", [])
-        rows = data.get("rows", [])
-
-        if not rows:
-            col_defs = ", ".join(f'"{c}" VARCHAR' for c in columns)
-            conn.execute(f'CREATE OR REPLACE TABLE "{table_name}" ({col_defs})')
-            return
-
-        import tempfile
-        tmp = os.path.join(tempfile.gettempdir(), f"_fetch_{table_name}.json")
-        with open(tmp, "w") as f:
-            json.dump(rows, f)
-        conn.execute(f'CREATE OR REPLACE TABLE "{table_name}" AS SELECT * FROM read_json_auto(\'{tmp}\')')
-        os.remove(tmp)
+        ticket = flight.Ticket(json.dumps({"sql": sql}).encode("utf-8"))
+        reader = client.do_get(ticket, options)
+        return reader.read_all()
 
     def execute(self, sql: str):
         """

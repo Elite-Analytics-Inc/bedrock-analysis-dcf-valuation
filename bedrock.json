@@ -3,25 +3,41 @@
   "namespace": "bedrock",
   "inputs": ["bedrock.finance.stock_prices"],
   "params_schema": {
-    "ticker": {
-      "type": "string",
-      "default": "AAPL",
-      "description": "Stock ticker symbol (e.g. AAPL, MSFT, NVDA, GOOGL, TSLA)"
-    },
-    "wacc": {
-      "type": "number",
-      "default": 0.10,
-      "description": "Weighted Average Cost of Capital — annual discount rate (e.g. 0.09 = 9%)"
-    },
-    "terminal_growth": {
-      "type": "number",
-      "default": 0.03,
-      "description": "Long-run terminal growth rate (e.g. 0.025 = 2.5%). Must be < WACC."
-    },
-    "projection_years": {
-      "type": "integer",
-      "default": 5,
-      "description": "Years of explicit FCF projection before terminal value (5–10 typical)"
+    "type": "object",
+    "required": ["ticker", "wacc", "terminal_growth", "projection_years"],
+    "properties": {
+      "ticker": {
+        "type": "string",
+        "default": "AAPL",
+        "minLength": 1,
+        "maxLength": 8,
+        "pattern": "^[A-Za-z.\\-]+$",
+        "description": "Stock ticker symbol to value, e.g. AAPL, MSFT, NVDA, GOOGL, TSLA. Letters/dot/hyphen only; the analysis upper-cases on the back end.",
+        "placeholder": "AAPL"
+      },
+      "wacc": {
+        "type": "number",
+        "default": 0.10,
+        "minimum": 0.01,
+        "maximum": 0.30,
+        "description": "Weighted Average Cost of Capital — the annual discount rate applied to projected free cash flows. Typical equity WACC sits between 7% and 12% (0.07–0.12). Higher WACC → lower valuation.",
+        "placeholder": "0.10"
+      },
+      "terminal_growth": {
+        "type": "number",
+        "default": 0.025,
+        "minimum": 0.00,
+        "maximum": 0.05,
+        "description": "Perpetual growth rate after the explicit projection period. Anchor below long-run GDP growth (2–3%). MUST be smaller than WACC or the terminal value diverges.",
+        "placeholder": "0.025"
+      },
+      "projection_years": {
+        "type": "integer",
+        "default": 5,
+        "minimum": 3,
+        "maximum": 15,
+        "description": "How many years of free cash flow to project explicitly before applying terminal value. 5 years is standard for stable companies; 7–10 for growth names."
+      }
     }
   },
   "resources": {
